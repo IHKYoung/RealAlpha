@@ -119,7 +119,7 @@ export const LOCALES = {
 const SUPPORTED = Object.keys(LOCALES);
 
 export let currentLang = (() => {
-  const stored = localStorage.getItem('purepng-lang');
+  const stored = localStorage.getItem('realalpha-lang');
   if (stored && SUPPORTED.includes(stored)) return stored;
   const nav = (navigator.language || 'en').toLowerCase();
   if (nav.startsWith('zh')) return 'zh-CN';
@@ -136,11 +136,11 @@ export function t(key, ...args) {
 
 export function applyLang(code) {
   if (code && SUPPORTED.includes(code)) currentLang = code;
-  localStorage.setItem('purepng-lang', currentLang);
+  localStorage.setItem('realalpha-lang', currentLang);
   document.documentElement.lang = currentLang;
 
   const titles = { 'zh-CN': '智能去背景', ja: '背景除去ツール', ko: '배경 제거 도구' };
-  document.title = 'PurePNG — ' + (titles[currentLang] || 'Background Remover');
+  document.title = 'RealAlpha — ' + (titles[currentLang] || 'Background Remover');
 
   document.querySelectorAll('[data-i18n]').forEach(el => {
     el.textContent = t(el.dataset.i18n);

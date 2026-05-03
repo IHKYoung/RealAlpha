@@ -132,7 +132,7 @@ $('dl-btn').addEventListener('click', () => {
   const url = URL.createObjectURL(processedBlob);
   const a = document.createElement('a');
   a.href = url;
-  a.download = 'purepng-' + Date.now() + '.png';
+  a.download = 'realalpha-' + Date.now() + '.png';
   a.click();
   setTimeout(() => URL.revokeObjectURL(url), 1000);
 });

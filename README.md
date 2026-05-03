@@ -1,16 +1,16 @@
-# PurePNG
+# RealAlpha
 
-**Fake transparent background → Real transparent PNG.**  
-A tiny browser tool for AI-generated images with solid-color or checkerboard backgrounds.
+**RealAlpha turns fake transparent AI images into real transparent PNGs with alpha channel.**  
+把 AI 生成的假透明图片，变成真正带 Alpha 通道的透明 PNG。
 
-> PurePNG is part of [AhaKnow Tool Lab](https://github.com/ahaknow) — turning real problems into small, shippable tools.  
+> Part of [AhaKnow Tool Lab](https://github.com/IHKYoung) — turning real problems into small, shippable tools.  
 > 凡所思，皆可造。
 
 ---
 
 ## What it does
 
-AI image tools (Midjourney, DALL·E, Stable Diffusion…) often export images with a white or checkerboard background instead of true transparency. PurePNG removes that — entirely in your browser, nothing uploaded.
+AI image tools (Midjourney, DALL·E, Stable Diffusion…) often export images with a white or checkerboard background instead of true transparency. RealAlpha removes that — entirely in your browser, nothing uploaded.
 
 **Your image never leaves your device.**
 
@@ -47,7 +47,7 @@ Push to GitHub, import in [Vercel](https://vercel.com) — it auto-detects Vite 
 
 Most background removers flood-fill from the image edges. That misses enclosed regions — the white inside a donut hole, for example.
 
-PurePNG runs **two BFS passes**:
+RealAlpha runs **two BFS passes**:
 
 1. **Edge BFS** — flood-fill from all four borders, mark connected background-colored pixels
 2. **Interior BFS** — find remaining background-colored components that have no contact with the transparent outer region → those are holes, remove them too
