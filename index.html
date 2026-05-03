@@ -1,0 +1,105 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>PurePNG — Background Remover</title>
+</head>
+<body>
+
+<header>
+  <div class="logo">
+    <div class="logo-icon">P</div>
+    PurePNG
+  </div>
+  <div class="sep"></div>
+  <span class="hd-desc" data-i18n="appDesc">Smart Background Removal · Runs locally, no upload</span>
+  <div class="hd-right">
+    <select id="lang-sel" class="lang-sel" title="Language">
+      <option value="en">EN</option>
+      <option value="zh-CN">中文</option>
+      <option value="ja">日本語</option>
+      <option value="ko">한국어</option>
+    </select>
+    <div class="tol-group">
+      <span data-i18n="removalStrength">Removal Strength</span>
+      <span class="tol-hint" data-i18n="precise">Precise</span>
+      <input type="range" id="tol" min="5" max="100" value="28">
+      <span class="tol-hint" data-i18n="loose">Loose</span>
+      <span class="tol-val" id="tol-val">Medium</span>
+    </div>
+    <button class="btn btn-primary" id="proc-btn" disabled data-i18n="removeBtn">Remove BG</button>
+    <button class="btn btn-dl hidden" id="dl-btn" data-i18n="downloadBtn">↓ Download PNG</button>
+  </div>
+</header>
+
+<main class="ws">
+
+  <div class="panel">
+    <div class="panel-head">
+      <svg width="11" height="11" viewBox="0 0 12 12" fill="none">
+        <rect x="1" y="1" width="10" height="10" rx="1.5" stroke="currentColor" stroke-width="1.5"/>
+        <path d="M1 9L4 6l2 2 3-3.5L11 7" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round"/>
+      </svg>
+      <span data-i18n="panelOriginal">Original</span>
+      <span class="badge hidden" id="bg-badge"></span>
+    </div>
+    <div class="panel-body">
+      <div class="dz" id="dz">
+        <div class="empty" id="empty-l">
+          <svg width="44" height="44" viewBox="0 0 44 44" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" opacity=".5">
+            <rect x="4" y="8" width="36" height="28" rx="3"/>
+            <circle cx="14" cy="18" r="3"/>
+            <path d="M4 28l9-9 6 6 5-5 10 9"/>
+          </svg>
+          <p data-i18n="dropHint">Drop / Click / Paste</p>
+          <small data-i18n="dropFormats">PNG · JPG · WebP · GIF</small>
+        </div>
+        <canvas id="in-cv" class="hidden"></canvas>
+      </div>
+      <input type="file" id="fi" accept="image/*">
+    </div>
+  </div>
+
+  <div class="div-col">
+    <div class="div-line"></div>
+    <button class="div-btn" id="mid-btn">→</button>
+    <div class="div-line"></div>
+  </div>
+
+  <div class="panel">
+    <div class="panel-head">
+      <svg width="11" height="11" viewBox="0 0 12 12" fill="none">
+        <circle cx="6" cy="6" r="5" stroke="currentColor" stroke-width="1.5" stroke-dasharray="2.8 2.2"/>
+        <circle cx="6" cy="6" r="1.8" fill="currentColor"/>
+      </svg>
+      <span data-i18n="panelOutput">Transparent Output</span>
+      <span class="badge hidden" id="out-info"></span>
+    </div>
+    <div class="panel-body cb" id="out-body">
+      <div class="empty" id="empty-r" style="opacity:.35">
+        <svg width="44" height="44" viewBox="0 0 44 44" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round">
+          <circle cx="22" cy="22" r="14" stroke-dasharray="4 3"/>
+          <path d="M16 22h12M22 16v12"/>
+        </svg>
+        <p data-i18n="waitingMsg">Waiting</p>
+      </div>
+      <canvas id="out-cv" class="hidden"></canvas>
+      <div class="proc-ov hidden" id="proc-ov">
+        <div class="spin"></div>
+        <span data-i18n="processingMsg">Processing…</span>
+      </div>
+    </div>
+  </div>
+
+</main>
+
+<footer>
+  <div class="dot" id="st-dot"></div>
+  <span id="st-txt"></span>
+  <span class="sb-right" data-i18n="statusLocal">Runs entirely locally · No data uploaded</span>
+</footer>
+
+<script type="module" src="/src/main.js"></script>
+</body>
+</html>
