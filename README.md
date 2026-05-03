@@ -6,6 +6,8 @@
 > Part of [AhaKnow Tool Lab](https://github.com/IHKYoung) — turning real problems into small, shippable tools.  
 > 凡所思，皆可造。
 
+![RealAlpha Screenshot](docs/screenshot.png)
+
 ---
 
 ## What it does
