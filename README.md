@@ -73,7 +73,7 @@ To add a language: add a key in `LOCALES` in `src/i18n.js` and an `<option>` in 
 
 ## Built by
 
-**Clarke Young** · [AhaKnow](https://github.com/ahaknow)
+**[Clarke Young](https://github.com/IHKYoung)** · [AhaKnow](https://github.com/ahaknow)
 
 ---
 
