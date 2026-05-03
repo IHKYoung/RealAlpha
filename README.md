@@ -1,98 +1,82 @@
-# PurePNG — Smart Background Remover
+# PurePNG
 
-> 所见即所得的网页版 AI 图片去背景工具。完全本地运行，无上传，输出透明底 PNG。
+**Fake transparent background → Real transparent PNG.**  
+A tiny browser tool for AI-generated images with solid-color or checkerboard backgrounds.
 
----
-
-## 功能特性
-
-| 功能 | 说明 |
-|------|------|
-| 🖼️ 多种上传方式 | 拖拽 / 点击 / 粘贴 (Ctrl+V) |
-| 🎯 智能背景检测 | 自动识别纯色背景 & 棋盘格背景（AI 工具常见）|
-| 🕳️ 内部孔洞修复 | 第二轮 BFS 处理封闭区域（如圆环内部）|
-| 🎚️ 强度调节 | Precise → Medium → Loose → Max 四档 |
-| 🌏 多语言 | EN / 中文 / 日本語 / 한국어，自动检测浏览器语言 |
-| 🔒 代码混淆 | Terser + javascript-obfuscator，F12 无法直读源码 |
-| ☁️ 一键部署 | Vercel 自动识别 Vite 项目 |
+> PurePNG is part of [AhaKnow Tool Lab](https://github.com/ahaknow) — turning real problems into small, shippable tools.  
+> 凡所思，皆可造。
 
 ---
 
-## 快速开始
+## What it does
+
+AI image tools (Midjourney, DALL·E, Stable Diffusion…) often export images with a white or checkerboard background instead of true transparency. PurePNG removes that — entirely in your browser, nothing uploaded.
+
+**Your image never leaves your device.**
+
+---
+
+## Features
+
+- 🖼 **Drop / Click / Paste** to upload
+- 🎯 **Auto-detects** solid-color and checkerboard backgrounds
+- 🕳 **Interior hole fix** — enclosed background regions (e.g. inside a ring) are removed too
+- 🎚 **4-level strength** — Precise / Medium / Loose / Max
+- 🌏 **4 languages** — EN / 中文 / 日本語 / 한국어, auto-detected from browser
+
+---
+
+## Run locally
 
 ```bash
-# 本地开发
 npm install
-npm run dev        # http://localhost:5173
-
-# 生产构建（含混淆）
-npm run build      # → dist/
-
-# 本地预览构建产物
-npm run preview
+npm run dev       # → http://localhost:5173
 ```
 
----
+## Build & deploy
 
-## 部署到 Vercel
-
-1. 将仓库推送到 GitHub
-2. 在 Vercel 中 Import Repository
-3. Vercel 自动检测 Vite，使用 `vercel.json` 中的配置构建：
-   - Build Command: `npm run build`
-   - Output Directory: `dist`
-4. 无需任何环境变量
-
----
-
-## 项目结构
-
-```
-PurePNG/
-├── index.html            Vite HTML 入口（仅结构，无内联逻辑）
-├── src/
-│   ├── main.js           应用入口：事件绑定、流程调度
-│   ├── bgRemoval.js      核心算法：BFS 去背景 + 内孔修复 + 边缘羽化
-│   ├── i18n.js           多语言系统：LOCALES、t()、applyLang()
-│   └── style.css         暗色主题 UI
-├── vite.config.js        构建配置：Terser + javascript-obfuscator
-├── package.json
-├── vercel.json           Vercel 部署配置
-├── docs/
-│   ├── CHANGELOG.md      版本变更索引
-│   └── logs/             每日执行日志
-└── dist/                 构建产物（gitignore）
+```bash
+npm run build     # → dist/
 ```
 
----
-
-## 算法说明
-
-### 背景检测
-- **纯色背景**：采样四角 + 边缘像素，聚类后取最大频率色
-- **棋盘格背景**：检测黑白/灰白交替的网格纹理（AI 生图工具导出格式）
-
-### 去除流程（4 步）
-1. **边缘 BFS**：从图像四边出发，将颜色距离 < tolerance 的连通背景像素全部标记
-2. **应用外部去除**：外部标记像素 alpha → 0
-3. **内孔 BFS**：对所有仍为背景色且不透明的像素做连通分量分析，若某连通块与外部透明区域不相邻 → 视为内孔，同样去除
-4. **边缘羽化**：在透明/不透明边界做 alpha 渐变，消除锯齿
-
-### 性能
-- 图片长边超过 2000px 自动缩放
-- 全程 Typed Arrays（`Uint8Array`、`Int32Array`）
-- BFS 前用 `requestAnimationFrame + setTimeout` 让 UI 先重绘
+Push to GitHub, import in [Vercel](https://vercel.com) — it auto-detects Vite and uses `vercel.json`. No environment variables needed.
 
 ---
 
-## 支持格式
+## How the algorithm works
 
-PNG · JPG · WebP · GIF（静帧）
+Most background removers flood-fill from the image edges. That misses enclosed regions — the white inside a donut hole, for example.
+
+PurePNG runs **two BFS passes**:
+
+1. **Edge BFS** — flood-fill from all four borders, mark connected background-colored pixels
+2. **Interior BFS** — find remaining background-colored components that have no contact with the transparent outer region → those are holes, remove them too
+3. **Feathering** — alpha gradient at all transparency boundaries to smooth edges
+
+Background detection samples corner and border pixels to identify solid color vs. checkerboard (alternating light/dark grid typical of AI tool exports).
 
 ---
 
-## 开发说明
+## Source layout
 
-- **新增语言**：在 `src/i18n.js` 的 `LOCALES` 对象中添加新的语言键，并在 `index.html` 的 `<select id="lang-sel">` 中追加 `<option>`
-- **调整算法**：修改 `src/bgRemoval.js`，导出接口 `removeBg(imageData, W, H, tol)` 保持不变
-- **混淆配置**：在 `vite.config.js` 的 `obfuscatorPlugin()` 中调整参数；避免开启 `controlFlowFlattening`（Canvas 密集代码会严重降速）
+```
+src/
+├── main.js        app entry — events, upload, process flow
+├── bgRemoval.js   BFS algorithm + interior hole fix + feathering
+├── i18n.js        localization — LOCALES, t(), applyLang()
+└── style.css      dark theme UI
+```
+
+To add a language: add a key in `LOCALES` in `src/i18n.js` and an `<option>` in `index.html`.
+
+---
+
+## Built by
+
+**Clarke Young** · [AhaKnow](https://github.com/ahaknow)
+
+---
+
+## License
+
+MIT
