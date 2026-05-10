@@ -1,5 +1,4 @@
 import { t, applyLang, currentLang } from './i18n.js';
-import { removeBg } from './bgRemoval.js';
 import './style.css';
 
 const $ = id => document.getElementById(id);
@@ -9,6 +8,46 @@ const outCv = $('out-cv'), outCtx = outCv.getContext('2d', { willReadFrequently:
 let originalImg   = null;
 let processedBlob = null;
 let debounceTimer = null;
+let pendingId     = 0;
+
+// ── Web Worker ────────────────────────────────────────────────────────────────
+const worker = new Worker(new URL('./worker.js', import.meta.url), { type: 'module' });
+
+worker.onmessage = ({ data: msg }) => {
+  if (msg.reqId !== pendingId) return; // stale result — a newer request is in flight
+  $('proc-ov').classList.add('hidden');
+
+  if (msg.error) {
+    setStatus(t('statusFailed') + msg.error, 'err');
+    return;
+  }
+
+  const W = outCv.width, H = outCv.height;
+  const imageData = new ImageData(new Uint8ClampedArray(msg.buf), W, H);
+  outCtx.putImageData(imageData, 0, 0);
+  outCv.classList.remove('hidden');
+
+  const badge = $('bg-badge');
+  badge.className = 'badge';
+  badge.classList.remove('hidden');
+  if (msg.bgType === 'solid')        { badge.textContent = t('bgSolid');   badge.classList.add('solid');   }
+  else if (msg.bgType === 'checker') { badge.textContent = t('bgChecker'); badge.classList.add('checker'); }
+  else                               { badge.textContent = t('bgMixed');   badge.classList.add('mixed');   }
+
+  $('out-info').textContent = `${W} × ${H}`;
+  $('out-info').classList.remove('hidden');
+
+  outCv.toBlob(blob => {
+    processedBlob = blob;
+    $('dl-btn').classList.remove('hidden');
+    setStatus(t('statusDone'), 'ok');
+  }, 'image/png');
+};
+
+worker.onerror = err => {
+  setStatus(t('statusFailed') + err.message, 'err');
+  $('proc-ov').classList.add('hidden');
+};
 
 // ── Status ────────────────────────────────────────────────────────────────────
 function setStatus(msg, type = 'idle') {
@@ -52,51 +91,20 @@ function loadFile(file) {
 function processImage() {
   if (!originalImg) return;
   const tol = parseInt($('tol').value);
+  const W = inCv.width, H = inCv.height;
+
+  outCv.width = W;
+  outCv.height = H;
+  outCtx.drawImage(inCv, 0, 0);
+
   $('proc-ov').classList.remove('hidden');
   $('empty-r').classList.add('hidden');
   setStatus(t('statusProcessing'), 'idle');
 
-  requestAnimationFrame(() => setTimeout(() => {
-    try {
-      const W = inCv.width, H = inCv.height;
-      outCv.width = W;
-      outCv.height = H;
-      outCtx.drawImage(inCv, 0, 0);
-
-      const imageData = outCtx.getImageData(0, 0, W, H);
-      const bgType = removeBg(imageData, W, H, tol);
-      outCtx.putImageData(imageData, 0, 0);
-      outCv.classList.remove('hidden');
-
-      const badge = $('bg-badge');
-      badge.className = 'badge';
-      badge.classList.remove('hidden');
-      if (bgType === 'solid')        { badge.textContent = t('bgSolid');   badge.classList.add('solid');   }
-      else if (bgType === 'checker') { badge.textContent = t('bgChecker'); badge.classList.add('checker'); }
-      else                           { badge.textContent = t('bgMixed');   badge.classList.add('mixed');   }
-
-      $('out-info').textContent = `${W} × ${H}`;
-      $('out-info').classList.remove('hidden');
-
-      outCv.toBlob(blob => {
-        processedBlob = blob;
-        $('dl-btn').classList.remove('hidden');
-        setStatus(t('statusDone'), 'ok');
-      }, 'image/png');
-    } catch (err) {
-      setStatus(t('statusFailed') + err.message, 'err');
-    } finally {
-      $('proc-ov').classList.add('hidden');
-    }
-  }, 20));
-}
-
-// ── Tolerance label ───────────────────────────────────────────────────────────
-function tolLabel(v) {
-  if (v <= 15) return t('tolPrecise');
-  if (v <= 35) return t('tolMedium');
-  if (v <= 60) return t('tolLoose');
-  return t('tolMax');
+  const imageData = outCtx.getImageData(0, 0, W, H);
+  const reqId = ++pendingId;
+  // Transfer ownership of the pixel buffer to the worker (zero-copy)
+  worker.postMessage({ buf: imageData.data.buffer, width: W, height: H, tol, reqId }, [imageData.data.buffer]);
 }
 
 // ── Events ────────────────────────────────────────────────────────────────────
@@ -121,10 +129,11 @@ window.addEventListener('drop', e => {
 $('proc-btn').addEventListener('click', processImage);
 $('mid-btn').addEventListener('click', () => { if (originalImg) processImage(); });
 
-$('tol').addEventListener('input', () => {
-  $('tol-val').textContent = tolLabel(parseInt($('tol').value));
+// Tolerance slider — update numeric display and debounce re-processing
+$('tol').addEventListener('input', e => {
+  $('tol-val').textContent = e.target.value;
   clearTimeout(debounceTimer);
-  debounceTimer = setTimeout(() => { if (originalImg) processImage(); }, 350);
+  debounceTimer = setTimeout(() => { if (originalImg) processImage(); }, 100);
 });
 
 $('dl-btn').addEventListener('click', () => {
@@ -147,11 +156,9 @@ document.addEventListener('paste', e => {
 
 $('lang-sel').addEventListener('change', e => {
   applyLang(e.target.value);
-  $('tol-val').textContent = tolLabel(parseInt($('tol').value));
   if (!originalImg) setStatus(t('statusReady'));
 });
 
 // ── Init ──────────────────────────────────────────────────────────────────────
 applyLang(currentLang);
 setStatus(t('statusReady'));
-$('tol-val').textContent = tolLabel(parseInt($('tol').value));

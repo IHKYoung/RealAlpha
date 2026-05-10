@@ -181,30 +181,94 @@ export function removeBg(imageData, W, H, tol) {
     if (label[i] > 0 && removeComp[label[i]]) removed[i] = 1;
   }
 
-  // Step 4: Final write + soft-edge feathering
-  const featherThresh = tol * 1.8;
+  // Step 4: Binary alpha write
+  for (let idx = 0; idx < n; idx++) {
+    data[idx * 4 + 3] = removed[idx] ? 0 : 255;
+  }
+
+  // Step 5: Edge matting — content-aware alpha for the fg/bg boundary.
+  //
+  // Box blur was replaced because it spreads a 3-4px soft zone across the whole
+  // edge regardless of content, which looks blurry/dirty. Instead we solve the
+  // compositing equation for each edge pixel individually:
+  //
+  //   pixel = α × fg + (1−α) × bg   →   α = (pixel − bg) / (fg − bg)
+  //
+  // fg is estimated from interior (non-edge) subject pixels in a 5×5 window.
+  // Result: exactly 1px of sub-pixel-accurate anti-aliasing at the true object
+  // boundary, with fully sharp edges everywhere else.
+
+  const bgR = bgColors.reduce((s, c) => s + c[0], 0) / bgColors.length;
+  const bgG = bgColors.reduce((s, c) => s + c[1], 0) / bgColors.length;
+  const bgB = bgColors.reduce((s, c) => s + c[2], 0) / bgColors.length;
+
+  // Interior fg pixel = fg pixel whose 4-connected neighbors are all fg (or border)
+  const isInterior = new Uint8Array(n);
+  for (let y = 0; y < H; y++) {
+    for (let x = 0; x < W; x++) {
+      const i = y * W + x;
+      if (removed[i]) continue;
+      if (
+        (x === 0     || !removed[i - 1]) &&
+        (x === W - 1 || !removed[i + 1]) &&
+        (y === 0     || !removed[i - W])  &&
+        (y === H - 1 || !removed[i + W])
+      ) isInterior[i] = 1;
+    }
+  }
+
+  // Edge fg pixels: fg pixels adjacent to at least one bg pixel
+  for (let y = 0; y < H; y++) {
+    for (let x = 0; x < W; x++) {
+      const i = y * W + x;
+      if (removed[i] || isInterior[i]) continue;
+
+      const p = i * 4;
+      const pr = data[p], pg = data[p + 1], pb = data[p + 2];
+
+      // Estimate fg color from interior fg pixels within a 5×5 window
+      let fR = 0, fG = 0, fB = 0, fN = 0;
+      for (let dy = -2; dy <= 2; dy++) {
+        for (let dx = -2; dx <= 2; dx++) {
+          const nx = x + dx, ny = y + dy;
+          if (nx < 0 || nx >= W || ny < 0 || ny >= H) continue;
+          const ni = ny * W + nx;
+          if (!isInterior[ni]) continue;
+          const np = ni * 4;
+          fR += data[np]; fG += data[np + 1]; fB += data[np + 2]; fN++;
+        }
+      }
+
+      // Thin objects (hair, wires) may have no interior neighbors → keep opaque
+      if (fN === 0) continue;
+
+      fR /= fN; fG /= fN; fB /= fN;
+
+      // Solve for α per channel; only use channels with enough fg/bg contrast
+      let aSum = 0, cnt = 0;
+      const minContrast = 8;
+      if (Math.abs(fR - bgR) > minContrast) { aSum += (pr - bgR) / (fR - bgR); cnt++; }
+      if (Math.abs(fG - bgG) > minContrast) { aSum += (pg - bgG) / (fG - bgG); cnt++; }
+      if (Math.abs(fB - bgB) > minContrast) { aSum += (pb - bgB) / (fB - bgB); cnt++; }
+      if (cnt === 0) continue;
+
+      data[p + 3] = Math.round(Math.max(0, Math.min(1, aSum / cnt)) * 255);
+    }
+  }
+
+  // Step 6: Edge color decontamination.
+  // Semi-transparent edge pixels still carry mixed RGB: subject × α + bg × (1−α).
+  // Solve for pure subject color: subject = (mixed − bg × (1−α)) / α
   for (let idx = 0; idx < n; idx++) {
     const p = idx * 4;
-    if (removed[idx]) { data[p + 3] = 0; continue; }
+    const a = data[p + 3];
+    if (a === 0 || a === 255) continue;
 
-    const x = idx % W, y = (idx / W) | 0;
-    const adjRemoved = (x > 0   && removed[idx - 1])
-                     + (x < W-1 && removed[idx + 1])
-                     + (y > 0   && removed[idx - W])
-                     + (y < H-1 && removed[idx + W]);
-
-    if (adjRemoved > 0) {
-      const r = data[p], g = data[p+1], b = data[p+2];
-      let minDist = Infinity;
-      for (const [br, bg, bb] of bgColors) {
-        const d = colorDist(r, g, b, br, bg, bb);
-        if (d < minDist) minDist = d;
-      }
-      if (minDist < featherThresh) {
-        const alpha = Math.round((minDist / featherThresh) * 255);
-        if (alpha < data[p + 3]) data[p + 3] = alpha;
-      }
-    }
+    const alpha    = a / 255;
+    const invAlpha = 1 - alpha;
+    data[p]     = Math.max(0, Math.min(255, Math.round((data[p]     - invAlpha * bgR) / alpha)));
+    data[p + 1] = Math.max(0, Math.min(255, Math.round((data[p + 1] - invAlpha * bgG) / alpha)));
+    data[p + 2] = Math.max(0, Math.min(255, Math.round((data[p + 2] - invAlpha * bgB) / alpha)));
   }
 
   return bgType;

@@ -22,12 +22,10 @@
       <option value="ja">日本語</option>
       <option value="ko">한국어</option>
     </select>
-    <div class="tol-group">
-      <span data-i18n="removalStrength">Removal Strength</span>
-      <span class="tol-hint" data-i18n="precise">Precise</span>
-      <input type="range" id="tol" min="5" max="100" value="28">
-      <span class="tol-hint" data-i18n="loose">Loose</span>
-      <span class="tol-val" id="tol-val">Medium</span>
+    <div class="tol-ctrl">
+      <span class="tol-label" data-i18n="toleranceLabel">Strength</span>
+      <input type="range" id="tol" class="tol-slider" min="5" max="100" value="25" step="1">
+      <span class="tol-val" id="tol-val">25</span>
     </div>
     <button class="btn btn-primary" id="proc-btn" disabled data-i18n="removeBtn">Remove BG</button>
     <button class="btn btn-dl hidden" id="dl-btn" data-i18n="downloadBtn">↓ Download PNG</button>
